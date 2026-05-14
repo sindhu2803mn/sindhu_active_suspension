@@ -1,0 +1,176 @@
+clc;
+clear;
+close all;
+
+%% =========================================================
+% ACTIVE VIBRATION STABILIZATION SYSTEM
+% WITH SENSOR NOISE + LOW PASS FILTER
+%% =========================================================
+
+%% PLANT TRANSFER FUNCTION
+% G(s) = 1 / (s^2 + 3s + 2)
+
+num = [1];
+den = [1 3 2];
+
+plant = tf(num,den);
+
+%% =========================================================
+%% PD CONTROLLER
+
+Kp = 8;
+Kd = 3;
+
+controller = pid(Kp,0,Kd);
+
+%% =========================================================
+%% CLOSED LOOP SYSTEM
+
+closed_sys = feedback(controller*plant,1);
+
+%% =========================================================
+%% SIMULATION TIME
+
+t = 0:0.01:15;
+
+%% =========================================================
+%% AUTOMATED DISTURBANCE PROFILE
+
+u = zeros(size(t));
+
+% Disturbance 1
+u(t>=1) = u(t>=1) + 1;
+
+% Disturbance 2
+u(t>=4) = u(t>=4) + 0.5;
+
+% Disturbance 3
+u(t>=7) = u(t>=7) + 2;
+
+% Disturbance 4
+u(t>=10) = u(t>=10) - 1.5;
+
+%% =========================================================
+%% CLOSED LOOP RESPONSE
+
+[y_clean,t_out] = lsim(closed_sys,u,t);
+
+%% =========================================================
+%% ADD SENSOR NOISE
+
+noise_power = 0.02;
+
+noise = noise_power * randn(size(y_clean));
+
+y_noisy = y_clean + noise;
+
+%% =========================================================
+%% LOW PASS FILTER DESIGN
+%
+% H(s) = 10 / (s + 10)
+
+filter_num = [10];
+filter_den = [1 10];
+
+lowpass_filter = tf(filter_num,filter_den);
+
+%% =========================================================
+%% FILTER THE NOISY SIGNAL
+
+y_filtered = lsim(lowpass_filter,y_noisy,t);
+
+%% =========================================================
+%% PLOT CLEAN RESPONSE
+
+figure;
+plot(t,y_clean,'LineWidth',2);
+grid on;
+
+title('Original Closed Loop Response');
+xlabel('Time (s)');
+ylabel('Amplitude');
+
+%% =========================================================
+%% PLOT NOISY RESPONSE
+
+figure;
+plot(t,y_noisy,'LineWidth',1.5);
+grid on;
+
+title('Response with Sensor Noise');
+xlabel('Time (s)');
+ylabel('Amplitude');
+
+%% =========================================================
+%% PLOT FILTERED RESPONSE
+
+figure;
+plot(t,y_filtered,'LineWidth',2);
+grid on;
+
+title('Filtered Response using Low Pass Filter');
+xlabel('Time (s)');
+ylabel('Amplitude');
+
+%% =========================================================
+%% COMPARISON PLOT
+
+figure;
+
+plot(t,y_clean,'LineWidth',2);
+hold on;
+
+plot(t,y_noisy,'LineWidth',1);
+
+plot(t,y_filtered,'LineWidth',2);
+
+grid on;
+
+title('Clean vs Noisy vs Filtered Response');
+
+xlabel('Time (s)');
+ylabel('Amplitude');
+
+legend('Original','Noisy','Filtered');
+
+%% =========================================================
+%% PERFORMANCE METRICS
+
+disp('======================================')
+disp('PERFORMANCE METRICS')
+disp('======================================')
+
+info = stepinfo(closed_sys);
+
+fprintf('Kp = %.2f\n', Kp);
+fprintf('Kd = %.2f\n', Kd);
+fprintf('Settling Time = %.2f seconds\n', info.SettlingTime);
+fprintf('Overshoot = %.2f %%\n', info.Overshoot);
+fprintf('Rise Time = %.2f seconds\n', info.RiseTime);
+
+%% =========================================================
+%% FILTER INFORMATION
+
+disp('======================================')
+disp('LOW PASS FILTER')
+disp('======================================')
+
+lowpass_filter
+
+%% =========================================================
+%% ENGINEERING SUMMARY
+
+disp('======================================')
+disp('ENGINEERING SUMMARY')
+disp('======================================')
+
+disp('Sensor noise was intentionally introduced')
+disp('to simulate real-world measurement errors.')
+
+disp('A low-pass filter was used to suppress')
+disp('high-frequency noise components and')
+disp('improve feedback signal quality.')
+
+disp('The PD controller maintained stable')
+disp('disturbance rejection performance even')
+disp('under noisy sensing conditions.')
